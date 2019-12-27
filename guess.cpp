@@ -15,7 +15,7 @@
 #include <deque>
 #include <list>
 #include <queue>
-
+#include <ctime>
 //using namespace std;
 
 #define MAXWORDSIZE 20 //Maximum size of a word from the input dictionaries
@@ -95,7 +95,7 @@ bool processProbFromFile(ntContainerType **mainContainer, char *fileType);  //pr
 //used to find the length of a possible non-ascii string, used because MACOSX had problems with wstring
 short findSize(std::string input);
 
-
+clock_t start_time, end_time;
 int main(int argc, char *argv[]) {
     std::string inputDicFileName[MAXINPUTDIC];
 
@@ -188,7 +188,7 @@ int main(int argc, char *argv[]) {
         std::cerr << "\nError, could not open structure file from the training set\n";
         return 0;
     }
-
+    start_time = clock();
     output_password.open(guesses_file.c_str());
     if (!generateGuesses(&pqueue)) {
         std::cerr << "\nError generating guesses\n";
@@ -550,6 +550,8 @@ int createTerminal(pqReplacementType *curQueueItem, int workingSection, std::str
                 } else {
                     output_password.flush();
                     output_password.close();
+                    end_time = clock();
+                    std::cout << "The speed is: " << std::fixed << guess_number / ((double) (end_time - start_time) / CLOCKS_PER_SEC) << std::endl;
                     std::exit(0);
                 }
             } else {
