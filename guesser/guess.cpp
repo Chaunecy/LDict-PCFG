@@ -29,7 +29,7 @@
 
 //declare variables in config file
 std::string model_path, guesses_file;
-long guess_number = 0, password_max_len = 4, password_min_len = 255;
+long password_max_len = 4, password_min_len = 255;
 
 
 ///////////////////////////////////////////
@@ -61,8 +61,9 @@ typedef struct pqReplacementStruct {
     std::deque<ntContainerType *> replacement;
 } pqReplacementType;
 
-std::ofstream output_password;
+std::ofstream *output_password;
 
+unsigned long long guess_number = 0;
 unsigned long long count = 0;
 
 
@@ -96,6 +97,7 @@ bool processProbFromFile(ntContainerType **mainContainer, char *fileType);  //pr
 short findSize(std::string input);
 
 clock_t start_time, end_time;
+
 int main(int argc, char *argv[]) {
     std::string inputDicFileName[MAXINPUTDIC];
 
@@ -138,7 +140,7 @@ int main(int argc, char *argv[]) {
             guesses_file = argv[i];
         } else if (strncmp(argv[i], _guess_number.c_str(), _guess_number.length()) == 0) {
             i += 1;
-            guess_number = strtol(argv[i], nullptr, 0);
+            guess_number = strtoull(argv[i], nullptr, 0);
         } else if (strncmp(argv[i], _guess_min_len.c_str(), _guess_min_len.length()) == 0) {
             i += 1;
             password_min_len = strtol(argv[i], nullptr, 0);
@@ -189,7 +191,8 @@ int main(int argc, char *argv[]) {
         return 0;
     }
     start_time = clock();
-    output_password.open(guesses_file.c_str());
+    output_password = new std::ofstream;
+    output_password->open(guesses_file.c_str());
     if (!generateGuesses(&pqueue)) {
         std::cerr << "\nError generating guesses\n";
         return 0;
@@ -201,12 +204,14 @@ int main(int argc, char *argv[]) {
 
 void help() {
     std::cout << "Usage Info:\n"
-                 "--help\tprint this message\n"
-                 "--trained-model\tpath of trained model\n"
-                 "--guesses-file\tpwd generated will be placed here\n"
-                 "--guess-number\tnumber of pwd to be generated\n"
-                 "--guess-min-len\tpwd with length shorter than this will be ignored\n"
-                 "--guess-max-len\tpwd with length longer than this will be ignored" << std::endl;
+                 "\t--help\tprint this message\n"
+                 "\t--trained-model\tpath of trained model\n"
+                 "\t--guesses-file\tpwd generated will be placed here\n"
+                 "\t--guess-number\tnumber of pwd to be generated\n"
+                 "\t--guess-min-len\tpwd with length shorter\n"
+                 "\t               \tthan this will be ignored\n"
+                 "\t--guess-max-len\tpwd with length longer\n"
+                 "\t               \tthan this will be ignored" << std::endl;
     std::exit(-1);
 }
 
@@ -541,17 +546,20 @@ int createTerminal(pqReplacementType *curQueueItem, int workingSection, std::str
          it != curQueueItem->replacement[workingSection]->word.end(); ++it) {
         curOutput->resize(size);
         curOutput->append(*it);
-        if (workingSection == curQueueItem->replacement.size() - 1) {
-            if ((curOutput->size() >= password_min_len) &&
-                (curOutput->size() <= password_max_len)) {
+        if (workingSection == (int) curQueueItem->replacement.size() - 1) {
+            int cur_size = (int) curOutput->size();
+            if ((cur_size >= password_min_len) &&
+                (cur_size <= password_max_len)) {
                 count++;
                 if (!guesses_file.empty() && count <= guess_number) {
-                    output_password << *curOutput << '\n';
+                    (*output_password) << *curOutput << '\n';
                 } else {
-                    output_password.flush();
-                    output_password.close();
+                    output_password->flush();
+                    output_password->close();
                     end_time = clock();
-                    std::cout << "The speed is: " << std::fixed << guess_number / ((double) (end_time - start_time) / CLOCKS_PER_SEC) << std::endl;
+                    std::cout << "The speed is: " << std::fixed
+                              << (double) guess_number / ((double) (end_time - start_time) / CLOCKS_PER_SEC)
+                              << std::endl;
                     std::exit(0);
                 }
             } else {

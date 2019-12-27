@@ -96,7 +96,7 @@ def write2disk(_structures: dict, _letter: list, _digits: dict, _symbol: dict, m
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser("Weir's PCFG Trainer")
+    parser = argparse.ArgumentParser("LDict PCFG Trainer")
     parser.add_argument("-p", "--pwd-set", required=True, help="password set, a password per line")
     parser.add_argument("-m", "--model", required=True, help="model will be save here")
     parser.add_argument("-g", "--grammar", required=False, default="grammar",
