@@ -28,8 +28,8 @@
 #endif
 
 //declare variables in config file
-std::string model_path, guesses_file;
-long password_max_len = 4, password_min_len = 255;
+std::string model_path;
+long password_max_len = 255, password_min_len = 4;
 
 
 ///////////////////////////////////////////
@@ -61,7 +61,6 @@ typedef struct pqReplacementStruct {
     std::deque<ntContainerType *> replacement;
 } pqReplacementType;
 
-std::ofstream *output_password;
 
 unsigned long long guess_number = 0;
 unsigned long long count = 0;
@@ -83,7 +82,7 @@ bool processBasicStruct(pqueueType *pQueue, ntContainerType **dicWords, ntContai
 
 bool generateGuesses(pqueueType *pQueue);
 
-int createTerminal(pqReplacementType *curQueueItem, int workingSection, std::string *curOutput, double prob);
+void createTerminal(pqReplacementType *curQueueItem, int workingSection, std::string *curOutput, double prob);
 
 bool pushNewValues(pqueueType *pQueue, pqReplacementType *curQueueItem);
 
@@ -120,7 +119,6 @@ int main(int argc, char *argv[]) {
     }
     std::string _help = "--help";
     std::string _trained_model = "--trained-model";
-    std::string _guesses_file = "--guesses-file";
     std::string _guess_number = "--guess-number";
     std::string _guess_min_len = "--guess-min-len";
     std::string _guess_max_len = "--guess-max-len";
@@ -135,9 +133,6 @@ int main(int argc, char *argv[]) {
             if (model_path[model_path.size() - 1] != PATH_DELIMITER) {
                 model_path += PATH_DELIMITER;
             }
-        } else if (strncmp(argv[i], _guesses_file.c_str(), _guesses_file.length()) == 0) {
-            i += 1;
-            guesses_file = argv[i];
         } else if (strncmp(argv[i], _guess_number.c_str(), _guess_number.length()) == 0) {
             i += 1;
             guess_number = strtoull(argv[i], nullptr, 0);
@@ -159,7 +154,7 @@ int main(int argc, char *argv[]) {
 
     //---------Process all the Dictioanry Words------------------//
     if (model_path.empty()) {
-        std::cout << "Need trained model" << std::endl;
+        std::cerr << "Need trained model" << std::endl;
         std::exit(-1);
     }
 
@@ -191,8 +186,6 @@ int main(int argc, char *argv[]) {
         return 0;
     }
     start_time = clock();
-    output_password = new std::ofstream;
-    output_password->open(guesses_file.c_str());
     if (!generateGuesses(&pqueue)) {
         std::cerr << "\nError generating guesses\n";
         return 0;
@@ -203,7 +196,7 @@ int main(int argc, char *argv[]) {
 
 
 void help() {
-    std::cout << "Usage Info:\n"
+    std::cerr << "Usage Info:\n"
                  "\t--help\tprint this message\n"
                  "\t--trained-model\tpath of trained model\n"
                  "\t--guesses-file\tpwd generated will be placed here\n"
@@ -520,17 +513,19 @@ bool processBasicStruct(pqueueType *pQueue, ntContainerType **dicWords, ntContai
 
 bool generateGuesses(pqueueType *pQueue) {
     pqReplacementType curQueueItem;
-    int returnStatus;
     std::string curGuess;
     while (!pQueue->empty()) {
         curQueueItem = pQueue->top();
         pQueue->pop();
         curGuess.clear();
-        returnStatus = createTerminal(&curQueueItem, 0, &curGuess, curQueueItem.base_probability);
-        if (returnStatus == 1) { //made the maximum number of guesses
+        createTerminal(&curQueueItem, 0, &curGuess, curQueueItem.base_probability);
+
+        if (count >= guess_number) {
+            end_time = clock();
+            std::cerr << "The speed is: " << std::fixed
+                      << (double) guess_number / ((double) (end_time - start_time) / CLOCKS_PER_SEC)
+                      << std::endl;
             return true;
-        } else if (returnStatus == -1) { //an error occured
-            return false;
         }
         pushNewValues(pQueue, &curQueueItem);
     }
@@ -538,41 +533,23 @@ bool generateGuesses(pqueueType *pQueue) {
 }
 
 
-int createTerminal(pqReplacementType *curQueueItem, int workingSection, std::string *curOutput, double curProb) {
+void createTerminal(pqReplacementType *curQueueItem, int workingSection, std::string *curOutput, double curProb) {
     std::list<std::string>::iterator it;
-    int size = curOutput->size();
+    int size = (int) curOutput->size();
     curProb *= curQueueItem->replacement[workingSection]->probability;
     for (it = curQueueItem->replacement[workingSection]->word.begin();
          it != curQueueItem->replacement[workingSection]->word.end(); ++it) {
         curOutput->resize(size);
         curOutput->append(*it);
         if (workingSection == (int) curQueueItem->replacement.size() - 1) {
-            int cur_size = (int) curOutput->size();
-            if ((cur_size >= password_min_len) &&
-                (cur_size <= password_max_len)) {
-                count++;
-                if (!guesses_file.empty() && count <= guess_number) {
-                    (*output_password) << *curOutput << '\n';
-                } else {
-                    output_password->flush();
-                    output_password->close();
-                    end_time = clock();
-                    std::cout << "The speed is: " << std::fixed
-                              << (double) guess_number / ((double) (end_time - start_time) / CLOCKS_PER_SEC)
-                              << std::endl;
-                    std::exit(0);
-                }
-            } else {
-                return 0;
-            }
+            count++;
+            fputs_unlocked((*curOutput + '\n').c_str(), stdout);
 
 
         } else {
             createTerminal(curQueueItem, workingSection + 1, curOutput, curProb);
         }
     }
-
-    return 0;
 }
 
 bool pushNewValues(pqueueType *pQueue, pqReplacementType *curQueueItem) {
