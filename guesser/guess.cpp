@@ -520,8 +520,10 @@ bool generateGuesses(pqueueType *pQueue) {
         curGuess.clear();
         createTerminal(&curQueueItem, 0, &curGuess, curQueueItem.base_probability);
 
-        if (count >= guess_number) {
-            end_time = clock();
+        end_time = clock();
+        double elapsed = ((double) (end_time - start_time) / CLOCKS_PER_SEC);
+        if (count >= guess_number || elapsed > 86400.0) {
+
             std::cerr << "The speed is: " << std::fixed
                       << (double) guess_number / ((double) (end_time - start_time) / CLOCKS_PER_SEC)
                       << std::endl;
